@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXORA // Tactical Ops</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">NEXORA</span>
+  <span class="link" id="link">LINK: STANDBY</span>
+  <time class="clock" id="clock">--:--:--</time>
+</header>
+
+<main class="grid">
+  <section class="card map-card">
+    <h2>Operational Map</h2>
+    <div class="map" id="map">
+      <div class="map-grid"></div>
+      <span class="map-tag">SECTOR 7 / FEED 01</span>
+    </div>
+  </section>
+
+  <section class="card b2-card">
+    <h2>B-2 Spirit</h2>
+    <div id="b2-canvas"></div>
+    <span class="b2-tag">DRAG TO ROTATE / SCROLL TO ZOOM</span>
+  </section>
+
+  <section class="card">
+    <h2>Units</h2>
+    <div class="units" id="units"></div>
+  </section>
+
+  <section class="card">
+    <h2>Alerts</h2>
+    <ul class="alerts" id="alerts"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Status</h2>
+    <dl class="stats">
+      <div><dt>Active units</dt><dd id="statUnits">0</dd></div>
+      <div><dt>Threat</dt><dd id="statThreat">LOW</dd></div>
+      <div><dt>Comms</dt><dd id="statComms">SECURE</dd></div>
+    </dl>
+  </section>
+</main>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="script.js"></script>
+<script src="b2-mini.js"></script>
+</body>
+</html>

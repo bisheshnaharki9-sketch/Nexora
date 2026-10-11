@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXORA // HOLO</title>
+<link rel="stylesheet" href="holo.css">
+</head>
+<body>
+
+<canvas id="holo"></canvas>
+
+<div id="hud">
+  <div class="corner tl">
+    <div class="label">CLASSIFICATION</div>
+    <div class="val">EYES ONLY</div>
+  </div>
+  <div class="corner tr">
+    <div class="label">DESIGNATION</div>
+    <div class="val">H-20 / SPIRIT-CLASS</div>
+  </div>
+  <div class="corner bl">
+    <div class="label">WINGSPAN</div>
+    <div class="val" id="v-span">45.0 M</div>
+    <div class="label" style="margin-top:.5rem">LENGTH</div>
+    <div class="val" id="v-len">20.0 M</div>
+    <div class="label" style="margin-top:.5rem">STATUS</div>
+    <div class="val live">ACTIVE</div>
+  </div>
+  <div class="corner br">
+    <div class="label">SCAN MODE</div>
+    <div class="val" id="v-scan">VOLUMETRIC</div>
+    <div class="label" style="margin-top:.5rem">FRAME</div>
+    <div class="val" id="v-fps">-- FPS</div>
+    <div class="label" style="margin-top:.5rem">ROTATION</div>
+    <div class="val" id="v-rot">000.0&deg;</div>
+  </div>
+</div>
+
+<div id="brackets">
+  <span class="bk nw"></span>
+  <span class="bk ne"></span>
+  <span class="bk sw"></span>
+  <span class="bk se"></span>
+</div>
+
+<div id="controls">DRAG TO ROTATE &middot; SCROLL TO ZOOM &middot; SPACE TO PAUSE</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="holo.js"></script>
+</body>
+</html>
