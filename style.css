@@ -332,3 +332,40 @@ body {
   padding: .12rem .35rem;
   opacity: .85;
 }
+
+/* comms panel */
+.comms-card { padding-bottom: .8rem; }
+#radio-wave {
+  width: 100%; height: 64px; display: block;
+  background: #060a07; border: 1px solid var(--line);
+  margin-bottom: .6rem;
+}
+.comms-row { display: flex; align-items: center; gap: .6rem; }
+#radio-btn {
+  flex: 1; padding: .45rem .8rem;
+  background: #101614; color: #7fffcb;
+  border: 1px solid #1d2a24;
+  font: 11px "IBM Plex Mono","Courier New",monospace;
+  letter-spacing: .18em; cursor: pointer;
+  text-transform: uppercase;
+  transition: background .1s, color .1s;
+}
+#radio-btn:hover { background: #14201c; }
+#radio-btn:active, #radio-btn.tx {
+  background: #7fffcb; color: #060a07;
+}
+#radio-status {
+  font: 11px "IBM Plex Mono","Courier New",monospace;
+  letter-spacing: .18em; padding: .3rem .5rem;
+  border: 1px solid currentColor;
+}
+#radio-status.rx { color: #4a5a4c; }
+#radio-status.tx { color: #c04a30; }
+.comms-hint {
+  margin-top: .4rem; font-size: .58rem;
+  color: #3d4a40; letter-spacing: .14em;
+}
+.comms-hint kbd {
+  background: #101614; border: 1px solid #1d2a24;
+  padding: 0 .3rem; font-family: inherit;
+}

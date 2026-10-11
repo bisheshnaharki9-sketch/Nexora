@@ -77,7 +77,7 @@
     bp.Q.value = 3;
     const gain = actx.createGain();
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.004);
+    gain.gain.linearRampToValueAtTime(0.06, now + 0.006);
     gain.gain.exponentialRampToValueAtTime(0.0005, now + 0.08);
     src.connect(bp).connect(gain).connect(actx.destination);
     src.start(now);
@@ -97,7 +97,7 @@
     bp.frequency.value = 1100;
     bp.Q.value = 1.2;
     staticGain = actx.createGain();
-    staticGain.gain.value = 0.028;
+    staticGain.gain.value = 0.006;
     staticSrc.connect(bp).connect(staticGain).connect(actx.destination);
     staticSrc.start();
   }
@@ -141,10 +141,21 @@
 
     if (!('speechSynthesis' in window)) return;
 
+    startStatic();
+
     const u = new SpeechSynthesisUtterance(line);
-    u.rate = 0.92;
-    u.pitch = 0.75;
-    u.volume = 0.9;
+    u.rate = 0.82;
+    u.pitch = 0.4;
+    u.volume = 0.7;
+
+    const voices = speechSynthesis.getVoices();
+    const pick =
+      voices.find(v => /^en/i.test(v.lang) && /male|david|daniel|alex|fred/i.test(v.name)) ||
+      voices.find(v => /^en/i.test(v.lang));
+    if (pick) u.voice = pick;
+
+    u.onend = () => stopStatic();
+
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }
