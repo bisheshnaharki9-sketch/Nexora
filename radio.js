@@ -1,7 +1,5 @@
-/* radio.js — real walkie-talkie.
-   Mic input drives the waveform. AI speaks back via speechSynthesis.
-   Firefox can't do speech recognition, so the AI doesn't parse your
-   words — it reacts to the fact that you transmitted. */
+/* radio.js — real AI comms with neural voice.
+   Whisper for transcription, gpt-oss-120b for replies, Groq PlayAI for voice. */
 
 (function () {
   const canvas = document.getElementById('radio-wave');
@@ -9,6 +7,10 @@
   const status = document.getElementById('radio-status');
   const feed = document.getElementById('feed');
   if (!canvas || !btn) return;
+
+  const GROQ_KEY = window.GROQ_KEY || '';
+  const GROQ = 'https://api.groq.com/openai/v1';
+  const VOICE = 'Fritz-PlayAI';   // deep male. try: Arista-PlayAI, Atlas-PlayAI, Celeste-PlayAI
 
   const g = canvas.getContext('2d');
 
@@ -26,18 +28,15 @@
   let actx = null;
   let analyser = null;
   let data = null;
-  let micReady = false;
+  let stream = null;
 
   async function initAudio() {
-    if (!actx) {
-      actx = new (window.AudioContext || window.webkitAudioContext)();
-    }
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') await actx.resume();
-
-    if (micReady) return;
+    if (stream) return true;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true }
       });
       const src = actx.createMediaStreamSource(stream);
@@ -46,11 +45,10 @@
       analyser.smoothingTimeConstant = 0.6;
       data = new Uint8Array(analyser.fftSize);
       src.connect(analyser);
-      // do NOT connect to destination — that causes feedback howl
-      micReady = true;
+      return true;
     } catch (err) {
-      micReady = false;
       console.warn('mic denied:', err.message);
+      return false;
     }
   }
 
@@ -78,14 +76,13 @@
     const gain = actx.createGain();
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.06, now + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0005, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0005, now + 0.09);
     src.connect(bp).connect(gain).connect(actx.destination);
     src.start(now);
     src.stop(now + 0.12);
   }
 
-  let staticSrc = null;
-  let staticGain = null;
+  let staticSrc = null, staticGain = null;
 
   function startStatic() {
     if (!actx || staticSrc) return;
@@ -113,61 +110,192 @@
     staticGain = null;
   }
 
-  /* ---------- AI voice ---------- */
+  function rogerBeep() {
+    if (!actx) return;
+    const now = actx.currentTime;
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 1400;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(gain).connect(actx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
 
-  const LINES = [
-    'Copy that, command.',
-    'Affirmative. Holding position.',
-    'Moving to grid reference seven.',
-    'Understood. Eyes on target.',
-    'Recon reports negative contact.',
-    'Copy. Adjusting heading.',
-    'Waiting on your next call.',
-    'Solid copy. Over.'
-  ];
+  /* ---------- groq: transcribe ---------- */
 
-  function aiRespond() {
-    const line = LINES[Math.floor(Math.random() * LINES.length)];
+  async function transcribe(blob) {
+    const fd = new FormData();
+    fd.append('file', blob, 'transmission.webm');
+    fd.append('model', 'whisper-large-v3-turbo');
+    fd.append('language', 'en');
+    fd.append('response_format', 'json');
 
-    if (feed) {
-      const li = document.createElement('li');
-      li.className = 'hot';
-      li.textContent =
-        new Date().toLocaleTimeString('en-GB', { hour12: false }) +
-        '  KESTREL: ' + line;
-      feed.prepend(li);
-      while (feed.children.length > 40) feed.lastChild.remove();
-    }
+    const r = await fetch(GROQ + '/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + GROQ_KEY },
+      body: fd
+    });
+    if (!r.ok) throw new Error('whisper ' + r.status);
+    const j = await r.json();
+    return (j.text || '').trim();
+  }
 
-    if (!('speechSynthesis' in window)) return;
+  /* ---------- groq: respond ---------- */
 
+  async function respond(userText) {
+    const r = await fetch(GROQ + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + GROQ_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-oss-120b',
+        temperature: 0.7,
+        max_tokens: 250,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are KESTREL, a radio operator on a tactical net. ' +
+              'Answer ANY question the user asks — science, math, history, coding, geography, ' +
+              'everyday stuff, anything. Be helpful, accurate, and direct. ' +
+              'Reply in 2-5 short sentences. Use plain language. ' +
+              'Start with "Copy" or "Roger" occasionally and end with "Over" or "Out" occasionally, ' +
+              'but always answer the actual question. If you do not know something, say so. ' +
+              'Never refuse a reasonable question.'
+          },
+          { role: 'user', content: userText }
+        ]
+      })
+    });
+    if (!r.ok) throw new Error('llm ' + r.status);
+    const j = await r.json();
+    return j.choices[0].message.content.trim();
+  }
+
+  /* ---------- groq: TTS ---------- */
+
+  async function tts(text) {
+    const r = await fetch(GROQ + '/audio/speech', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + GROQ_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'playai-tts',
+        voice: VOICE,
+        input: text,
+        response_format: 'wav'
+      })
+    });
+    if (!r.ok) throw new Error('tts ' + r.status);
+    return await r.arrayBuffer();
+  }
+
+  /* ---------- feed ---------- */
+
+  function logLine(who, text, hot) {
+    if (!feed) return;
+    const li = document.createElement('li');
+    if (hot) li.className = 'hot';
+    li.textContent =
+      new Date().toLocaleTimeString('en-GB', { hour12: false }) +
+      '  ' + who + ': ' + text;
+    feed.prepend(li);
+    while (feed.children.length > 40) feed.lastChild.remove();
+  }
+
+  /* ---------- speak via groq TTS, fall back to speechSynthesis ---------- */
+
+  async function speak(text) {
     startStatic();
 
-    const u = new SpeechSynthesisUtterance(line);
-    u.rate = 0.82;
-    u.pitch = 0.4;
-    u.volume = 0.7;
+    try {
+      const buf = await tts(text);
+      if (!actx) throw new Error('no actx');
+      const decoded = await actx.decodeAudioData(buf.slice(0));
+      const src = actx.createBufferSource();
+      src.buffer = decoded;
 
-    const voices = speechSynthesis.getVoices();
-    const pick =
-      voices.find(v => /^en/i.test(v.lang) && /male|david|daniel|alex|fred/i.test(v.name)) ||
-      voices.find(v => /^en/i.test(v.lang));
-    if (pick) u.voice = pick;
+      // route TTS through a bandpass to give it a radio quality
+      const bp = actx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1800;
+      bp.Q.value = 0.7;
 
-    u.onend = () => stopStatic();
+      const hp = actx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 400;
 
+      const gain = actx.createGain();
+      gain.gain.value = 0.95;
+
+      src.connect(bp).connect(hp).connect(gain).connect(actx.destination);
+      src.onended = () => {
+        stopStatic();
+        setTimeout(rogerBeep, 120);
+      };
+      src.start();
+      return;
+    } catch (err) {
+      console.warn('groq tts failed, falling back:', err.message);
+    }
+
+    // fallback: browser TTS
+    if (!('speechSynthesis' in window)) {
+      stopStatic();
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.9;
+    u.pitch = 0.3;
+    u.volume = 0.8;
+    u.onend = () => { stopStatic(); setTimeout(rogerBeep, 120); };
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }
 
-  /* ---------- transmit state ---------- */
+  /* ---------- respond flow ---------- */
+
+  async function aiRespond(userText) {
+    logLine('YOU', userText);
+
+    if (!GROQ_KEY) {
+      logLine('KESTREL', 'Radio offline. Groq key missing.', true);
+      return;
+    }
+
+    logLine('KESTREL', '...');
+
+    try {
+      const reply = await respond(userText);
+      if (feed && feed.firstChild) feed.firstChild.remove();
+      logLine('KESTREL', reply, true);
+      squelch();
+      setTimeout(() => speak(reply), 120);
+    } catch (err) {
+      if (feed && feed.firstChild) feed.firstChild.remove();
+      logLine('KESTREL', 'Comms failure: ' + err.message, true);
+    }
+  }
+
+  /* ---------- transmit ---------- */
 
   let transmitting = false;
+  let recorder = null;
+  let chunks = [];
 
   async function startTX() {
     if (transmitting) return;
     transmitting = true;
-    await initAudio();
+
+    const ok = await initAudio();
     squelch();
     setTimeout(startStatic, 40);
 
@@ -175,11 +303,25 @@
     status.className = 'tx';
     btn.classList.add('tx');
     btn.textContent = 'TRANSMITTING';
+
+    if (!ok || !window.MediaRecorder) return;
+
+    chunks = [];
+    try {
+      recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size) chunks.push(e.data);
+      };
+      recorder.start();
+    } catch (err) {
+      console.warn('recorder failed:', err.message);
+    }
   }
 
   function endTX() {
     if (!transmitting) return;
     transmitting = false;
+
     squelch();
     stopStatic();
 
@@ -188,11 +330,31 @@
     btn.classList.remove('tx');
     btn.textContent = 'HOLD TO TRANSMIT';
 
-    // brief delay, then the AI answers
-    setTimeout(() => {
-      squelch();
-      setTimeout(aiRespond, 120);
-    }, 400);
+    if (!recorder || recorder.state === 'inactive') return;
+
+    const rec = recorder;
+    recorder = null;
+
+    rec.onstop = async () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      chunks = [];
+      if (blob.size < 2000) {
+        logLine('SYS', 'transmission too short', true);
+        return;
+      }
+      try {
+        const text = await transcribe(blob);
+        if (!text) {
+          logLine('SYS', 'no speech detected', true);
+          return;
+        }
+        aiRespond(text);
+      } catch (err) {
+        logLine('SYS', 'STT failed: ' + err.message, true);
+      }
+    };
+
+    rec.stop();
   }
 
   /* ---------- draw ---------- */
@@ -214,28 +376,22 @@
     g.stroke();
 
     if (transmitting && analyser && data) {
-      // real microphone waveform
       analyser.getByteTimeDomainData(data);
-
       g.strokeStyle = 'rgba(127,255,203,0.95)';
       g.lineWidth = 1.4;
       g.beginPath();
-
       const step = Math.floor(data.length / w);
       for (let x = 0; x < w; x++) {
-        const v = (data[x * step] - 128) / 128;   // -1 .. 1
+        const v = (data[x * step] - 128) / 128;
         const y = mid + v * (mid - 6);
         if (x === 0) g.moveTo(x, y);
         else g.lineTo(x, y);
       }
       g.stroke();
-
-      // soft glow
       g.strokeStyle = 'rgba(127,255,203,0.18)';
       g.lineWidth = 5;
       g.stroke();
     } else if (transmitting) {
-      // mic denied — synthetic fallback
       const now = performance.now();
       g.strokeStyle = 'rgba(127,255,203,0.6)';
       g.lineWidth = 1.4;
@@ -251,8 +407,6 @@
       g.stroke();
     }
   }
-
-  /* ---------- input ---------- */
 
   btn.addEventListener('mousedown', (e) => { e.preventDefault(); startTX(); });
   btn.addEventListener('mouseup', endTX);
