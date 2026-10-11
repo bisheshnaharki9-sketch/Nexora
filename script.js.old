@@ -1,0 +1,96 @@
+// Nexora - tactical board. Everything here is fake data for now.
+
+const $ = (id) => document.getElementById(id);
+
+const unitBox  = $('units');
+const alertBox = $('alerts');
+const mapBox   = $('map');
+const clockEl  = $('clock');
+const linkEl   = $('link');
+const threatEl = $('statThreat');
+const countEl  = $('statUnits');
+
+const units = [
+  { tag: 'ALPHA-1',   role: 'INFANTRY', state: 'OK' },
+  { tag: 'BRAVO-2',   role: 'RECON',    state: 'WARN' },
+  { tag: 'CHARLIE-3', role: 'ARMOR',    state: 'OK' },
+  { tag: 'DELTA-4',   role: 'MEDIC',    state: 'ALERT' },
+  { tag: 'ECHO-5',    role: 'SUPPORT',  state: 'OK' }
+];
+
+const feed = [
+  'Perimeter sensors recalibrated.',
+  'BRAVO-2 reports intermittent comms.',
+  'DELTA-4 requesting support.',
+  'Comms check passed. Channels secure.',
+  'Forecast: low visibility, no change.'
+];
+
+function node(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function drawMap() {
+  const spots = [
+    [38, 30], [66, 58], [22, 47], [54, 74], [80, 24]
+  ];
+  for (const [x, y] of spots) {
+    const b = node('span', 'blip');
+    b.style.left = x + '%';
+    b.style.top  = y + '%';
+    mapBox.append(b);
+  }
+}
+
+function drawUnits() {
+  unitBox.replaceChildren();
+  for (const u of units) {
+    const row = node('div', 'unit');
+    row.append(node('span', null, `${u.tag} - ${u.role}`));
+    row.append(node('span', 'state-' + u.state, u.state));
+    unitBox.append(row);
+  }
+  countEl.textContent = String(units.length);
+}
+
+function drawAlerts() {
+  alertBox.replaceChildren();
+  feed.forEach((line, i) => {
+    const hot = i === 0 && /request|intermittent/i.test(line);
+    alertBox.append(node('li', hot ? 'hot' : null, line));
+  });
+}
+
+function tick() {
+  clockEl.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+
+function shuffle() {
+  const pick = units[Math.floor(Math.random() * units.length)];
+  const states = ['OK', 'OK', 'WARN', 'ALERT'];
+  pick.state = states[Math.floor(Math.random() * states.length)];
+
+  drawUnits();
+
+  if (pick.state !== 'OK') {
+    feed.unshift(`${pick.tag} status: ${pick.state}.`);
+    if (feed.length > 6) feed.pop();
+    drawAlerts();
+  }
+
+  const levels = ['LOW', 'LOW', 'MODERATE', 'ELEVATED'];
+  threatEl.textContent = levels[Math.floor(Math.random() * levels.length)];
+}
+
+drawMap();
+drawUnits();
+drawAlerts();
+tick();
+
+setInterval(tick, 1000);
+setInterval(shuffle, 6000);
+
+setTimeout(() => { linkEl.textContent = 'LINK: ACTIVE'; }, 1500);

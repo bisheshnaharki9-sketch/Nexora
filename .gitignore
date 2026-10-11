@@ -1,0 +1,5 @@
+*.working
+*.old
+*.bak
+__pycache__/
+*.pyc

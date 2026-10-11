@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>NEXORA // B2</title>
+<style>
+  body { margin: 0; background: #060a07; overflow: hidden; }
+  #b2 { width: 100vw; height: 100vh; display: block; }
+  #label {
+    position: fixed; top: 1rem; left: 1rem;
+    color: #7fffcb; font: 12px monospace; letter-spacing: .3em;
+    text-shadow: 0 0 10px rgba(127,255,203,.6);
+  }
+  #sub {
+    position: fixed; bottom: 1rem; left: 1rem;
+    color: #3d4a40; font: 11px monospace; letter-spacing: .15em;
+  }
+</style>
+</head>
+<body>
+<div id="label">B-2 SPIRIT // HOLOGRAPHIC VIEW</div>
+<div id="sub">ROTATION: LIVE</div>
+<canvas id="b2"></canvas>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="b2.js"></script>
+</body>
+</html>
