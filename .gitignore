@@ -1,5 +1,8 @@
 *.working
 *.old
 *.bak
+key.env
+test
+key.js
 __pycache__/
 *.pyc
