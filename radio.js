@@ -10,7 +10,7 @@
 
   const GROQ_KEY = window.GROQ_KEY || '';
   const GROQ = 'https://api.groq.com/openai/v1';
-  const VOICE = 'Fritz-PlayAI';   // deep male. try: Arista-PlayAI, Atlas-PlayAI, Celeste-PlayAI
+  const VOICE = 'daniel';   // deep male. try: Arista-PlayAI, Atlas-PlayAI, Celeste-PlayAI
 
   const g = canvas.getContext('2d');
 
@@ -188,9 +188,9 @@
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'playai-tts',
+        model: 'canopylabs/orpheus-v1-english',
         voice: VOICE,
-        input: text,
+        input: '[authoritatively] ' + text,
         response_format: 'wav'
       })
     });

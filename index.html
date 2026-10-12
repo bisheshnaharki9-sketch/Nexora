@@ -28,7 +28,18 @@
     <div id="squad"></div>
   </section>
 
-  <section class="card comms-card">
+  <section class="card forge-card">
+  <h2>Intel</h2>
+  <textarea id="forge-prompt" placeholder="ask about doctrine, equipment, history..."></textarea>
+  <div class="forge-row">
+    <button id="forge-btn">ASK</button>
+    <span id="forge-status" class="idle">IDLE</span>
+    <button id="forge-copy">CLEAR</button>
+  </div>
+  <pre id="forge-out">// awaiting query</pre>
+</section>
+
+<section class="card comms-card">
   <h2>Comms</h2>
   <canvas id="radio-wave"></canvas>
   <div class="comms-row">
@@ -76,6 +87,7 @@
 <script src="squad.js"></script>
 <script src="key.js"></script>
 <script src="radio.js"></script>
+<script src="codegen.js"></script>
 <script src="b2-mini.js"></script>
 </body>
 </html>

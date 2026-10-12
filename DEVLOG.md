@@ -11,5 +11,5 @@ stuff that broke:
 
     the map tiles needed an api key all of a sudden so i had to switch
 
-    my radar file couldnt find the map and i didnt know why for like 20 mins and you know now im working on it.
+    my radar file couldnt find the map and i didnt know why for like 20 mins and you know now im working on it. a
     
